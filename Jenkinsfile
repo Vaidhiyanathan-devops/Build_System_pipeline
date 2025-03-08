@@ -6,8 +6,6 @@ pipeline {
         NODE_VERSION = "22.13.1"
         INSTALL_PATH = "/opt/zoho/nodejs22.13"
         TAR_OUTPUT = "/tmp/nodejs-${NODE_VERSION}.tar.gz"
-        GITHUB_REPO = "https://github.com/Vaidhiyanathan-devops/Jenkins_test.git"
-        GIT_BRANCH = "main"
         PYTHON_BIN = "/opt/zoho/python_3.12/bin/python3.12"
     }
 
@@ -44,7 +42,16 @@ pipeline {
                 script {
                     sh """
                     cd ${SRC_DIR}/node-v${NODE_VERSION}
-                    export PYTHON=${PYTHON_BIN}  # Set Python 3.12 explicitly
+
+                    # Force Python 3.12 by updating PATH
+                    export PATH=/opt/zoho/python_3.12/bin:\$PATH
+                    export PYTHON=${PYTHON_BIN}
+
+                    # Debug: Confirm Python version
+                    which python3
+                    python3 --version
+
+                    # Run configure
                     ./configure --prefix=${INSTALL_PATH} --enable-optimization
                     make -j\$(nproc)
                     """
