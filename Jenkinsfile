@@ -14,16 +14,11 @@ pipeline {
             steps {
                 script {
                     sh """
-                    sudo apt update && sudo apt install -y \\
-                        build-essential \\
-                        libbz2-dev \\
-                        libssl-dev \\
-                        libreadline-dev \\
-                        zlib1g-dev \\
-                        libsqlite3-dev \\
-                        libffi-dev \\
-                        liblzma-dev \\
-                        xz-utils
+                    sudo apt update && sudo apt install -y \
+                    build-essential libssl-dev libbz2-dev \
+                    libreadline-dev libsqlite3-dev curl \
+                    zlib1g-dev libffi-dev liblzma-dev \
+                    pkg-config python3-distutils python3-dev
                     """
                 }
             }
@@ -32,7 +27,10 @@ pipeline {
         stage('Extract Source') {
             steps {
                 script {
-                    sh "cd ${SRC_DIR} && tar -xvf node-v${NODE_VERSION}.tar.gz"
+                    sh """
+                    cd ${SRC_DIR}
+                    tar -xvf node-v${NODE_VERSION}.tar.gz
+                    """
                 }
             }
         }
@@ -42,17 +40,13 @@ pipeline {
                 script {
                     sh """
                     cd ${SRC_DIR}/node-v${NODE_VERSION}
-
-                    # Force Python 3.12 by updating PATH
+                    
+                    # Force correct Python version
                     export PATH=/opt/zoho/python_3.12/bin:\$PATH
                     export PYTHON=${PYTHON_BIN}
 
-                    # Debug: Confirm Python version
-                    which python3
-                    python3 --version
-
                     # Run configure
-                    ./configure --prefix=${INSTALL_PATH} --enable-optimization
+                    ${PYTHON_BIN} configure.py --prefix=${INSTALL_PATH} --enable-optimization
                     make -j\$(nproc)
                     """
                 }
