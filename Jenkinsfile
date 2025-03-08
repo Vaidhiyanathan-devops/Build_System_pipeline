@@ -8,22 +8,24 @@ pipeline {
         TAR_OUTPUT = "/tmp/nodejs-${NODE_VERSION}.tar.gz"
         GITHUB_REPO = "https://github.com/Vaidhiyanathan-devops/Jenkins_test.git"
         GIT_BRANCH = "main"
-        NODE_SOURCE_TARBALL = "node-v${NODE_VERSION}.tar.gz"
-        NODE_SOURCE_DIR = "node-v${NODE_VERSION}"
+        PYTHON_BIN = "/opt/zoho/python_3.12/bin/python3.12"
     }
 
     stages {
-        stage('Download Source Code') {
+        stage('Install Dependencies') {
             steps {
                 script {
                     sh """
-                    mkdir -p ${SRC_DIR}
-                    cd ${SRC_DIR}
-                    
-                    # Download the correct source tarball if not present
-                    if [ ! -f ${NODE_SOURCE_TARBALL} ]; then
-                        wget https://nodejs.org/dist/v${NODE_VERSION}/${NODE_SOURCE_TARBALL}
-                    fi
+                    sudo apt update && sudo apt install -y \\
+                        build-essential \\
+                        libbz2-dev \\
+                        libssl-dev \\
+                        libreadline-dev \\
+                        zlib1g-dev \\
+                        libsqlite3-dev \\
+                        libffi-dev \\
+                        liblzma-dev \\
+                        xz-utils
                     """
                 }
             }
@@ -32,15 +34,7 @@ pipeline {
         stage('Extract Source') {
             steps {
                 script {
-                    sh """
-                    cd ${SRC_DIR}
-                    
-                    # Remove previous extraction if exists
-                    rm -rf ${NODE_SOURCE_DIR}
-                    
-                    # Extract the source tarball
-                    tar -xvf ${NODE_SOURCE_TARBALL}
-                    """
+                    sh "cd ${SRC_DIR} && tar -xvf node-v${NODE_VERSION}.tar.gz"
                 }
             }
         }
@@ -49,7 +43,8 @@ pipeline {
             steps {
                 script {
                     sh """
-                    cd ${SRC_DIR}/${NODE_SOURCE_DIR}
+                    cd ${SRC_DIR}/node-v${NODE_VERSION}
+                    export PYTHON=${PYTHON_BIN}  # Set Python 3.12 explicitly
                     ./configure --prefix=${INSTALL_PATH} --enable-optimization
                     make -j\$(nproc)
                     """
@@ -62,7 +57,7 @@ pipeline {
                 script {
                     sh """
                     mkdir -p /tmp/nodejs-pack
-                    cp -r ${SRC_DIR}/${NODE_SOURCE_DIR}/out/* /tmp/nodejs-pack
+                    cp -r ${SRC_DIR}/node-v${NODE_VERSION}/out/* /tmp/nodejs-pack
                     tar -czvf ${TAR_OUTPUT} -C /tmp/nodejs-pack .
                     """
                 }
