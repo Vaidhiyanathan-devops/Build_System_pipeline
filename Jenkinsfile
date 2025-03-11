@@ -1,66 +1,96 @@
 pipeline {
     agent any
+
     environment {
-        PYTHON_VERSION = "3.12.9"  // Updated Python version
-        INSTALL_DIR = "/opt/zoho/Python_3.12"
-        SOURCE_TAR = "/tmp/packages/Python-${PYTHON_VERSION}.tgz"
-        BUILD_DIR = "Python-${PYTHON_VERSION}"
-        ARCHIVE_NAME = "Python-${PYTHON_VERSION}-compiled.tar.gz"
+        SOURCE_TAR = "/tmp/packages/Python-3.12.9.tgz"
+        EXTRACT_DIR = "Python-3.12.9"
+        INSTALL_PATH = "/opt/zoho/Python_3.12"
+        OUTPUT_TAR = "Python-3.12.9-compiled.tgz"
     }
+
     stages {
-        stage('Cleanup Workspace') {
+        stage('Prepare Environment') {
             steps {
                 sh '''
-                rm -rf ${BUILD_DIR} ${INSTALL_DIR}
+                echo "🔹 Cleaning previous build if exists..."
+                rm -rf ${EXTRACT_DIR} ${INSTALL_PATH} ${OUTPUT_TAR}
+
+                echo "🔹 Creating install directory..."
+                mkdir -p ${INSTALL_PATH}
                 '''
             }
         }
+
         stage('Extract Source Code') {
             steps {
                 sh '''
+                echo "🔹 Extracting Python Source..."
                 tar -xvzf ${SOURCE_TAR}
+                cd ${EXTRACT_DIR}
                 '''
             }
         }
+
         stage('Install Dependencies') {
             steps {
                 sh '''
-                sudo apt update
-                sudo apt install -y build-essential libssl-dev zlib1g-dev
+                echo "🔹 Installing build dependencies..."
+                sudo apt update && sudo apt install -y build-essential libssl-dev zlib1g-dev
                 '''
             }
         }
-        stage('Configure Build') {
+
+        stage('Configure') {
             steps {
                 sh '''
-                cd ${BUILD_DIR}
-                ./configure --prefix=${INSTALL_DIR} --enable-optimizations
+                echo "🔹 Running ./configure..."
+                cd ${EXTRACT_DIR}
+                ./configure --prefix=${INSTALL_PATH} --enable-optimizations
                 '''
             }
         }
-        stage('Compile Source Code') {
+
+        stage('Compile Source') {
             steps {
                 sh '''
-                cd ${BUILD_DIR}
+                echo "🔹 Compiling Python..."
+                cd ${EXTRACT_DIR}
                 make -j$(nproc)
                 '''
             }
         }
+
         stage('Package Compiled Files') {
             steps {
                 sh '''
-                mkdir -p ${INSTALL_DIR}
-                make install DESTDIR=${INSTALL_DIR}
-                cd /opt/zoho
-                tar -czvf ${ARCHIVE_NAME} Python_3.12
-                mv ${ARCHIVE_NAME} ${WORKSPACE}/
+                echo "🔹 Creating tar of compiled files..."
+                tar -czvf ${OUTPUT_TAR} -C ${INSTALL_PATH} .
                 '''
             }
         }
-        stage('Archive Compiled Tar') {
+
+        stage('Upload to GitHub') {
             steps {
-                archiveArtifacts artifacts: '${ARCHIVE_NAME}', fingerprint: true
+                sh '''
+                echo "🔹 Uploading compiled tar to GitHub repo..."
+                # Replace this with your actual GitHub repo commands
+                # git clone https://your-repo-url.git
+                # cp ${OUTPUT_TAR} your-repo/
+                # cd your-repo
+                # git add ${OUTPUT_TAR}
+                # git commit -m "Added compiled Python 3.12.9"
+                # git push origin main
+                '''
             }
+        }
+    }
+
+    post {
+        always {
+            sh '''
+            echo "🔹 Cleaning up workspace..."
+            rm -rf ${EXTRACT_DIR} ${OUTPUT_TAR}
+            '''
         }
     }
 }
