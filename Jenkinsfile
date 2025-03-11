@@ -1,67 +1,65 @@
 pipeline {
     agent any
-
     environment {
-        SRC_DIR = "/tmp/packages"
-        NODE_VERSION = "22.13.1"
-        INSTALL_PATH = "/opt/zoho/nodejs22.13"
-        TAR_OUTPUT = "/tmp/nodejs-${NODE_VERSION}.tar.gz"
-        PYTHON_BIN = "/opt/zoho/python_3.12/bin/python3.12"
+        PYTHON_VERSION = "3.12.9"  // Updated Python version
+        INSTALL_DIR = "/opt/zoho/Python_3.12"
+        SOURCE_TAR = "/tmp/packages/Python-${PYTHON_VERSION}.tgz"
+        BUILD_DIR = "Python-${PYTHON_VERSION}"
+        ARCHIVE_NAME = "Python-${PYTHON_VERSION}-compiled.tar.gz"
     }
-
     stages {
+        stage('Cleanup Workspace') {
+            steps {
+                sh '''
+                rm -rf ${BUILD_DIR} ${INSTALL_DIR}
+                '''
+            }
+        }
+        stage('Extract Source Code') {
+            steps {
+                sh '''
+                tar -xvzf ${SOURCE_TAR}
+                '''
+            }
+        }
         stage('Install Dependencies') {
             steps {
-                script {
-                    sh """
-                    sudo apt update && sudo apt install -y \
-                    build-essential libssl-dev libbz2-dev \
-                    libreadline-dev libsqlite3-dev curl \
-                    zlib1g-dev libffi-dev liblzma-dev \
-                    pkg-config python3-distutils python3-dev
-                    """
-                }
+                sh '''
+                sudo apt update
+                sudo apt install -y build-essential libssl-dev zlib1g-dev
+                '''
             }
         }
-
-        stage('Extract Source') {
+        stage('Configure Build') {
             steps {
-                script {
-                    sh """
-                    cd ${SRC_DIR}
-                    tar -xvf node-v${NODE_VERSION}.tar.gz
-                    """
-                }
+                sh '''
+                cd ${BUILD_DIR}
+                ./configure --prefix=${INSTALL_DIR} --enable-optimizations
+                '''
             }
         }
-
-        stage('Configure & Compile') {
+        stage('Compile Source Code') {
             steps {
-                script {
-                    sh """
-                    cd ${SRC_DIR}/node-v${NODE_VERSION}
-                    
-                    # Force correct Python version
-                    export PATH=/opt/zoho/python_3.12/bin:\$PATH
-                    export PYTHON=${PYTHON_BIN}
-
-                    # Run configure
-                    ${PYTHON_BIN} configure.py --prefix=${INSTALL_PATH} --enable-optimization
-                    make -j\$(nproc)
-                    """
-                }
+                sh '''
+                cd ${BUILD_DIR}
+                make -j$(nproc)
+                '''
             }
         }
-
-        stage('Package Compiled Binaries') {
+        stage('Package Compiled Files') {
             steps {
-                script {
-                    sh """
-                    mkdir -p /tmp/nodejs-pack
-                    cp -r ${SRC_DIR}/node-v${NODE_VERSION}/out/* /tmp/nodejs-pack
-                    tar -czvf ${TAR_OUTPUT} -C /tmp/nodejs-pack .
-                    """
-                }
+                sh '''
+                mkdir -p ${INSTALL_DIR}
+                make install DESTDIR=${INSTALL_DIR}
+                cd /opt/zoho
+                tar -czvf ${ARCHIVE_NAME} Python_3.12
+                mv ${ARCHIVE_NAME} ${WORKSPACE}/
+                '''
+            }
+        }
+        stage('Archive Compiled Tar') {
+            steps {
+                archiveArtifacts artifacts: '${ARCHIVE_NAME}', fingerprint: true
             }
         }
     }
