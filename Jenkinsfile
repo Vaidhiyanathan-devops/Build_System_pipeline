@@ -49,7 +49,7 @@ pipeline {
 
     post {
         always {
-            node {  // Ensuring cleanup runs inside a node
+            node('main') {  // Ensuring cleanup runs inside a node
                 sh 'echo "Cleaning up workspace..."'
                 sh 'rm -rf ${BUILD_DIR} ${INSTALL_DIR} ${FINAL_TAR}'
             }
