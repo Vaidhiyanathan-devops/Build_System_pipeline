@@ -1,96 +1,64 @@
 pipeline {
-    agent any
+    agent any  // Runs on any available agent
 
     environment {
-        SOURCE_TAR = "/tmp/packages/Python-3.12.9.tgz"
-        EXTRACT_DIR = "Python-3.12.9"
-        INSTALL_PATH = "/opt/zoho/Python_3.12"
-        OUTPUT_TAR = "Python-3.12.9-compiled.tgz"
+        SRC_TAR = 'Python-3.12.9.tgz'
+        BUILD_DIR = 'build'
+        INSTALL_DIR = '/opt/zoho/python_3.12.9'
+        FINAL_TAR = 'Python-3.12.9-compiled.tar.gz'
     }
 
     stages {
-        stage('Prepare Environment') {
+        stage('Checkout') {
             steps {
-                sh '''
-                echo "🔹 Cleaning previous build if exists..."
-                rm -rf ${EXTRACT_DIR} ${INSTALL_PATH} ${OUTPUT_TAR}
-
-                echo "🔹 Creating install directory..."
-                mkdir -p ${INSTALL_PATH}
-                '''
+                git url: 'https://github.com/Vaidhiyanathan-devops/Jenkins_test.git', branch: 'main'
             }
         }
 
-        stage('Extract Source Code') {
+        stage('Extract Source') {
             steps {
-                sh '''
-                echo "🔹 Extracting Python Source..."
-                tar -xvzf ${SOURCE_TAR}
-                cd ${EXTRACT_DIR}
-                '''
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                sh '''
-                echo "🔹 Installing build dependencies..."
-                sudo apt update && sudo apt install -y build-essential libssl-dev zlib1g-dev
-                '''
+                sh 'mkdir -p ${BUILD_DIR} && tar -xzf ${SRC_TAR} -C ${BUILD_DIR} --strip-components=1'
             }
         }
 
         stage('Configure') {
             steps {
-                sh '''
-                echo "🔹 Running ./configure..."
-                cd ${EXTRACT_DIR}
-                ./configure --prefix=${INSTALL_PATH} --enable-optimizations
-                '''
+                sh 'cd ${BUILD_DIR} && ./configure --prefix=${INSTALL_DIR}'
             }
         }
 
-        stage('Compile Source') {
+        stage('Compile') {
             steps {
-                sh '''
-                echo "🔹 Compiling Python..."
-                cd ${EXTRACT_DIR}
-                make -j$(nproc)
-                '''
+                sh 'cd ${BUILD_DIR} && make -j$(nproc)'
             }
         }
 
-        stage('Package Compiled Files') {
+        stage('Install') {
             steps {
-                sh '''
-                echo "🔹 Creating tar of compiled files..."
-                tar -czvf ${OUTPUT_TAR} -C ${INSTALL_PATH} .
-                '''
+                sh 'cd ${BUILD_DIR} && make install'
             }
         }
 
-        stage('Upload to GitHub') {
+        stage('Package Compiled Version') {
             steps {
-                sh '''
-                echo "🔹 Uploading compiled tar to GitHub repo..."
-                # Replace this with your actual GitHub repo commands
-                # git clone https://your-repo-url.git
-                # cp ${OUTPUT_TAR} your-repo/
-                # cd your-repo
-                # git add ${OUTPUT_TAR}
-                # git commit -m "Added compiled Python 3.12.9"
-                # git push origin main
-                '''
+                sh 'tar -czf ${FINAL_TAR} -C ${INSTALL_DIR} .'
+                archiveArtifacts artifacts: '${FINAL_TAR}', fingerprint: true
             }
         }
     }
 
     post {
         always {
-            sh '''
-            echo "🔹 Cleaning up workspace..."
-            rm -rf ${EXTRACT_DIR} ${OUTPUT_TAR}
-            '''
+            node {  // Ensuring cleanup runs inside a node
+                sh 'echo "Cleaning up workspace..."'
+                sh 'rm -rf ${BUILD_DIR} ${INSTALL_DIR} ${FINAL_TAR}'
+            }
+        }
+        success {
+            echo "Pipeline completed successfully! ✅"
+        }
+        failure {
+            echo "Pipeline failed! ❌ Check logs."
         }
     }
 }
