@@ -68,6 +68,39 @@ pipeline {
             }
         }
 
+        stage('Post-Check Python Installation') {
+            steps {
+                script {
+                    sh """
+                    echo "Checking installed Python version..."
+                    ${INSTALL_PATH}/bin/python3 --version
+
+                    echo "Testing Python imports..."
+                    ${INSTALL_PATH}/bin/python3 -c "import ssl; import sqlite3; import bz2; print('All imports passed')"
+
+                    echo "Running C program to test Python binary..."
+                    cat > /tmp/test_python.c <<EOF
+                    #include <Python.h>
+                    #include <stdio.h>
+                    int main() {
+                        Py_Initialize();
+                        if (Py_IsInitialized()) {
+                            printf("Python C Embedding Test: Success\\n");
+                        } else {
+                            printf("Python C Embedding Test: Failed\\n");
+                            return 1;
+                        }
+                        Py_Finalize();
+                        return 0;
+                    }
+                    EOF
+                    gcc -o /tmp/test_python /tmp/test_python.c -I${INSTALL_PATH}/include/python3.12 -L${INSTALL_PATH}/lib -lpython3.12
+                    /tmp/test_python
+                    """
+                }
+            }
+        }
+
         stage('Package Compiled Binaries') {
             steps {
                 script {
