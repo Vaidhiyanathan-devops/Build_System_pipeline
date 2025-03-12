@@ -9,6 +9,18 @@ pipeline {
     }
 
     stages {
+        stage('Cleanup Previous Build') {
+            steps {
+                script {
+                    sh """
+                    echo "Cleaning previous build..."
+                    sudo rm -rf ${INSTALL_PATH} ${TAR_OUTPUT} /tmp/python-pack
+                    sudo rm -rf ${SRC_DIR}/Python-${PYTHON_VERSION}
+                    """
+                }
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
                 script {
@@ -50,7 +62,7 @@ pipeline {
                 script {
                     sh """
                     cd ${SRC_DIR}/Python-${PYTHON_VERSION}
-                    sudo make install
+                    make install
                     """
                 }
             }
@@ -61,8 +73,8 @@ pipeline {
                 script {
                     sh """
                     mkdir -p /tmp/python-pack
-                    sudo cp -r ${INSTALL_PATH}/* /tmp/python-pack
-                    sudo tar -czvf ${TAR_OUTPUT} -C /tmp/python-pack .
+                    cp -r ${INSTALL_PATH}/* /tmp/python-pack
+                    tar -czvf ${TAR_OUTPUT} -C /tmp/python-pack .
                     """
                 }
             }
