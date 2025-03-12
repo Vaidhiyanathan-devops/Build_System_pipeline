@@ -1,64 +1,73 @@
 pipeline {
-    agent any  // Runs on any available agent
+    agent any
 
     environment {
-        SRC_TAR = 'Python-3.12.9.tgz'
-        BUILD_DIR = 'build'
-        INSTALL_DIR = '/opt/zoho/python_3.12.9'
-        FINAL_TAR = 'Python-3.12.9-compiled.tar.gz'
+        SRC_DIR = "/tmp/packages"
+        PYTHON_VERSION = "3.12.9"
+        INSTALL_PATH = "/opt/zoho/Python_3.12"
+        TAR_OUTPUT = "/tmp/python-${PYTHON_VERSION}.tar.gz"
     }
 
     stages {
-        stage('Checkout') {
+        stage('Install Dependencies') {
             steps {
-                git url: 'https://github.com/Vaidhiyanathan-devops/Jenkins_test.git', branch: 'main'
+                script {
+                    sh """
+                    sudo apt update && sudo apt install -y \
+                    build-essential libssl-dev libbz2-dev \
+                    libreadline-dev libsqlite3-dev \
+                    zlib1g-dev libffi-dev liblzma-dev
+                    """
+                }
             }
         }
 
         stage('Extract Source') {
             steps {
-                sh 'mkdir -p ${BUILD_DIR} && tar -xzf ${SRC_TAR} -C ${BUILD_DIR} --strip-components=1'
+                script {
+                    sh """
+                    cd ${SRC_DIR}
+                    tar -xvf Python-${PYTHON_VERSION}.tgz
+                    """
+                }
             }
         }
 
-        stage('Configure') {
+        stage('Configure & Compile') {
             steps {
-                sh 'cd ${BUILD_DIR} && ./configure --prefix=${INSTALL_DIR}'
+                script {
+                    sh """
+                    cd ${SRC_DIR}/Python-${PYTHON_VERSION}
+
+                    # Configure Python build
+                    ./configure --prefix=${INSTALL_PATH} --enable-optimizations
+                    make -j\$(nproc)
+                    """
+                }
             }
         }
 
-        stage('Compile') {
+        stage('Install Compiled Python') {
             steps {
-                sh 'cd ${BUILD_DIR} && make -j$(nproc)'
+                script {
+                    sh """
+                    cd ${SRC_DIR}/Python-${PYTHON_VERSION}
+                    make install
+                    """
+                }
             }
         }
 
-        stage('Install') {
+        stage('Package Compiled Binaries') {
             steps {
-                sh 'cd ${BUILD_DIR} && make install'
+                script {
+                    sh """
+                    mkdir -p /tmp/python-pack
+                    cp -r ${INSTALL_PATH}/* /tmp/python-pack
+                    tar -czvf ${TAR_OUTPUT} -C /tmp/python-pack .
+                    """
+                }
             }
-        }
-
-        stage('Package Compiled Version') {
-            steps {
-                sh 'tar -czf ${FINAL_TAR} -C ${INSTALL_DIR} .'
-                archiveArtifacts artifacts: '${FINAL_TAR}', fingerprint: true
-            }
-        }
-    }
-
-    post {
-        always {
-            node('main') {  // Ensuring cleanup runs inside a node
-                sh 'echo "Cleaning up workspace..."'
-                sh 'rm -rf ${BUILD_DIR} ${INSTALL_DIR} ${FINAL_TAR}'
-            }
-        }
-        success {
-            echo "Pipeline completed successfully! ✅"
-        }
-        failure {
-            echo "Pipeline failed! ❌ Check logs."
         }
     }
 }
