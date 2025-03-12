@@ -38,8 +38,6 @@ pipeline {
                 script {
                     sh """
                     cd ${SRC_DIR}/Python-${PYTHON_VERSION}
-
-                    # Configure Python build
                     ./configure --prefix=${INSTALL_PATH} --enable-optimizations
                     make -j\$(nproc)
                     """
@@ -52,7 +50,7 @@ pipeline {
                 script {
                     sh """
                     cd ${SRC_DIR}/Python-${PYTHON_VERSION}
-                    make install
+                    sudo make install
                     """
                 }
             }
@@ -63,8 +61,8 @@ pipeline {
                 script {
                     sh """
                     mkdir -p /tmp/python-pack
-                    cp -r ${INSTALL_PATH}/* /tmp/python-pack
-                    tar -czvf ${TAR_OUTPUT} -C /tmp/python-pack .
+                    sudo cp -r ${INSTALL_PATH}/* /tmp/python-pack
+                    sudo tar -czvf ${TAR_OUTPUT} -C /tmp/python-pack .
                     """
                 }
             }
