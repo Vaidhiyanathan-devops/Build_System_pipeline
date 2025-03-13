@@ -39,7 +39,7 @@ pipeline {
                 script {
                     sh """
                     cd ${SRC_DIR}
-                    tar -xvf Python-${PYTHON_VERSION}.tgz
+                    sudo tar -xvf Python-${PYTHON_VERSION}.tgz
                     """
                 }
             }
