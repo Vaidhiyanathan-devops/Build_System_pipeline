@@ -50,7 +50,7 @@ pipeline {
                 script {
                     sh """
                     cd ${SRC_DIR}/Python-${PYTHON_VERSION}
-                    ./configure --prefix=${INSTALL_PATH} --enable-optimizations
+                    sudo ./configure --prefix=${INSTALL_PATH} --enable-optimizations
                     make -j\$(nproc)
                     """
                 }
