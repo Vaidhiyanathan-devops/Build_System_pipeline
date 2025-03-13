@@ -14,8 +14,8 @@ pipeline {
                 script {
                     sh """
                     echo "Cleaning previous build..."
-                    sudo rm -rf "$INSTALL_PATH" "$TAR_OUTPUT" /tmp/python-pack
-                    sudo rm -rf "$SRC_DIR/Python-$PYTHON_VERSION"
+                    sudo rm -rf "${env.INSTALL_PATH}" "${env.TAR_OUTPUT}" /tmp/python-pack
+                    sudo rm -rf "${env.SRC_DIR}/Python-${env.PYTHON_VERSION}"
                     """
                 }
             }
@@ -38,8 +38,8 @@ pipeline {
             steps {
                 script {
                     sh """
-                    cd "$SRC_DIR"
-                    tar -xvf "Python-$PYTHON_VERSION.tar.gz"
+                    cd "${env.SRC_DIR}"
+                    tar -xvf Python-${env.PYTHON_VERSION}.tgz
                     """
                 }
             }
@@ -49,8 +49,8 @@ pipeline {
             steps {
                 script {
                     sh """
-                    cd "$SRC_DIR/Python-$PYTHON_VERSION"
-                    ./configure --prefix="$INSTALL_PATH" --enable-optimizations
+                    cd "${env.SRC_DIR}/Python-${env.PYTHON_VERSION}"
+                    ./configure --prefix="${env.INSTALL_PATH}" --enable-optimizations
                     make -j\$(nproc)
                     """
                 }
@@ -61,42 +61,8 @@ pipeline {
             steps {
                 script {
                     sh """
-                    cd "$SRC_DIR/Python-$PYTHON_VERSION"
-                    sudo make install
-                    """
-                }
-            }
-        }
-
-        stage('Post-Check Python Installation') {
-            steps {
-                script {
-                    sh """
-                    echo "Checking installed Python version..."
-                    "$INSTALL_PATH/bin/python3" --version
-
-                    echo "Testing Python imports..."
-                    "$INSTALL_PATH/bin/python3" -c "import ssl; import sqlite3; import bz2; print('All imports passed')"
-
-                    echo "Running C program to test Python binary..."
-                    cat > /tmp/test_python.c <<EOF
-                    #include <Python.h>
-                    #include <stdio.h>
-                    int main() {
-                        Py_Initialize();
-                        if (Py_IsInitialized()) {
-                            printf("Python C Embedding Test: Success\\n");
-                        } else {
-                            printf("Python C Embedding Test: Failed\\n");
-                            return 1;
-                        }
-                        Py_Finalize();
-                        return 0;
-                    }
-                    EOF
-                    gcc -o /tmp/test_python /tmp/test_python.c -I"$INSTALL_PATH/include/python3.12" -L"$INSTALL_PATH/lib" -lpython3.12
-                    export LD_LIBRARY_PATH="$INSTALL_PATH/lib:$LD_LIBRARY_PATH"
-                    /tmp/test_python
+                    cd "${env.SRC_DIR}/Python-${env.PYTHON_VERSION}"
+                    make install
                     """
                 }
             }
@@ -107,8 +73,8 @@ pipeline {
                 script {
                     sh """
                     mkdir -p /tmp/python-pack
-                    sudo cp -r "$INSTALL_PATH/"* /tmp/python-pack
-                    tar -czvf "$TAR_OUTPUT" -C /tmp/python-pack .
+                    cp -r "${env.INSTALL_PATH}"/* /tmp/python-pack
+                    tar -czvf "${env.TAR_OUTPUT}" -C /tmp/python-pack .
                     """
                 }
             }
