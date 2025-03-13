@@ -25,7 +25,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    sudo apt update && sudo apt install -y \
+                    sudo apt install -y \
                     build-essential libssl-dev libbz2-dev \
                     libreadline-dev libsqlite3-dev \
                     zlib1g-dev libffi-dev liblzma-dev
